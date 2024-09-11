@@ -1,0 +1,67 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [bo, langchain]
+    
+    steps:
+      # Check out the code from the repository
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Build and Test for Spring Boot (/bo)
+      - name: Set up JDK 17 for Spring Boot
+        if: matrix.project == 'bo'
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+
+      - name: Build and test Spring Boot project
+        if: matrix.project == 'bo'
+        working-directory: ./bo
+        run: |
+          ./gradlew clean build
+
+      # Build and Test for FastAPI (/langchain)
+      - name: Set up Python for FastAPI
+        if: matrix.project == 'langchain'
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies and test FastAPI
+        if: matrix.project == 'langchain'
+        working-directory: ./langchain
+        run: |
+          pip install -r requirements.txt
+          pytest  # Assuming tests are written with pytest
+
+  # Docker build job
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      # Check out the code
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # Build Docker image for Spring Boot (/bo)
+      - name: Build Docker image for Spring Boot
+        run: |
+          docker build -t your-dockerhub-username/spring-boot-app:latest ./bo
+
+      # Build Docker image for FastAPI (/langchain)
+      - name: Build Docker image for FastAPI
+        run: |
+          docker build -t your-dockerhub-username/langchain-app:latest ./langchain
